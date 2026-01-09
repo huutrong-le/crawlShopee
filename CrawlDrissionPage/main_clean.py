@@ -33,9 +33,9 @@ def smart_delay(action_type='normal'):
     return final_delay
 
 # --- CẤU HÌNH ---
-KEYWORD = "Giày dép nữ"
-TARGET_COUNT = 800
-OUTPUT_FILE = "shopee_data_giay_dep_nu.json"
+KEYWORD = "Mỹ phẩm "
+TARGET_COUNT = 900
+OUTPUT_FILE = "shopee_data_mypham.json"
 
 # Khởi tạo trình duyệt
 co = ChromiumOptions()
@@ -149,15 +149,52 @@ while len(all_products) < TARGET_COUNT:
                     if not itemid or not shopid:
                         continue
                     
+                    # Xử lý giá gốc và giảm giá
+                    price_current = round((basic.get('price', 0) or 0) / 100000, 2)
+                    price_before_discount = basic.get('price_before_discount', 0) or 0
+                    price_original = round(price_before_discount / 100000, 2) if price_before_discount > 0 else price_current
+                    
+                    # Xử lý thời gian tạo sản phẩm (Unix timestamp -> YYYY-MM-DD)
+                    created_timestamp = basic.get('ctime', 0)
+                    if created_timestamp:
+                        from datetime import datetime
+                        created_time = datetime.fromtimestamp(created_timestamp).strftime('%Y-%m-%d')
+                    else:
+                        created_time = None
+                    
+                    # Kiểm tra video
+                    video_info_list = basic.get('video_info_list', [])
+                    video_exists = bool(video_info_list and len(video_info_list) > 0)
+                    
                     product = {
+                        # Thông tin cơ bản
                         'itemid': str(itemid),
                         'shopid': str(shopid),
                         'name': basic.get('name', 'N/A'),
-                        'price': round((basic.get('price', 0) or 0) / 100000, 2),
-                        'historical_sold': basic.get('historical_sold', 0),
+                        
+                        # Nhóm Giá & Khuyến mãi
+                        'price': price_current,
+                        'price_original': price_original,
+                        'discount': basic.get('discount', ''),
+                        'discount_rate': basic.get('raw_discount', 0),  # % giảm giá thực
+                        'promotion_id': basic.get('shopee_verified', None) or basic.get('badge_icon_type', None),
+                        
+                        # Nhóm Doanh số & Đánh giá (Quan trọng cho Bán chạy)
+                        'historical_sold': basic.get('historical_sold', 0),  # Tổng bán tích lũy
+                        'sold_monthly': basic.get('sold', 0),  # Bán trong tháng - CHỈ SỐ VÀNG cho Hot Trend
+                        'review_count': basic.get('cmt_count', 0),  # Số lượng đánh giá
                         'liked_count': basic.get('liked_count', 0),
                         'rating_star': basic.get('item_rating', {}).get('rating_star', 0),
-                        'discount': basic.get('discount', ''),
+                        
+                        # Nhóm Thời gian & Xu hướng (Quan trọng cho Hot Trend)
+                        'created_time': created_time,  # Thời gian đăng sản phẩm
+                        'brand': basic.get('brand', None) or basic.get('brand_name', None),
+                        
+                        # Nhóm Đa phương tiện & Tồn kho
+                        'video_exists': video_exists,
+                        'stock': basic.get('stock', 0),
+                        
+                        # Thông tin shop & hình ảnh
                         'location': basic.get('shop_location', 'N/A'),
                         'image': f"https://down-vn.img.susercontent.com/file/{basic.get('image')}" if basic.get('image') else '',
                         'url': f"https://shopee.vn/product/{shopid}/{itemid}"
