@@ -33,9 +33,9 @@ def smart_delay(action_type='normal'):
     return final_delay
 
 # --- CẤU HÌNH ---
-KEYWORD = "Giày dép nam"
+KEYWORD = "Giày dép nữ"
 TARGET_COUNT = 800
-OUTPUT_FILE = "shopee_data_giay_dep_nam.json"
+OUTPUT_FILE = "shopee_data_giay_dep_nu.json"
 
 # Khởi tạo trình duyệt
 co = ChromiumOptions()
