@@ -5,10 +5,37 @@ import time
 import random
 import os
 
+# --- HÀM DELAY THÔNG MINH ---
+def smart_delay(action_type='normal'):
+    """
+    Tạo delay ngẫu nhiên giống người dùng thật
+    - quick: 1.5-3s (đọc nhanh, cuộn nhẹ)
+    - normal: 3-7s (hành động bình thường)
+    - careful: 5-12s (sau khi chuyển trang, tránh spam)
+    - wait: 10-20s (sau captcha, chờ xử lý)
+    """
+    delays = {
+        'quick': (1.5, 3),
+        'normal': (3, 7), 
+        'careful': (5, 12),
+        'wait': (10, 20)
+    }
+    
+    min_delay, max_delay = delays.get(action_type, (3, 7))
+    # Sử dụng phân phối chuẩn để delay tập trung ở giữa, giống người thật
+    base_delay = random.uniform(min_delay, max_delay)
+    # Thêm micro-delay ngẫu nhiên để tránh pattern
+    micro_jitter = random.uniform(-0.3, 0.5)
+    final_delay = max(1, base_delay + micro_jitter)
+    
+    print(f"   ⏱️ Nghỉ {final_delay:.1f}s...")
+    time.sleep(final_delay)
+    return final_delay
+
 # --- CẤU HÌNH ---
-KEYWORD = "thời trang nam"
-TARGET_COUNT = 400
-OUTPUT_FILE = "shopee_data_ttnam.json"
+KEYWORD = "Giày dép nam"
+TARGET_COUNT = 800
+OUTPUT_FILE = "shopee_data_giay_dep_nam.json"
 
 # Khởi tạo trình duyệt
 co = ChromiumOptions()
@@ -44,9 +71,9 @@ except Exception as e:
 print("\n⚠️ QUAN TRỌNG - HÃY XỬ LÝ TRƯỚC KHI TIẾP TỤC:")
 print("   1. Đăng nhập tài khoản Shopee (BẮT BUỘC ĐỂ ÍT BỊ CAPTCHA HƠN!)")
 print("   2. Hoàn thành captcha/xác minh nếu có")
-print("   3. Chương trình sẽ tự động tiếp tục sau 30 giây...")
+print("   3. Chương trình sẽ tự động tiếp tục sau 25 giây...")
 print("   (Mẹo: Đăng nhập = Giảm 80% khả năng bị CAPTCHA khi cào)\n")
-time.sleep(30)
+time.sleep(25)
 
 # BƯỚC 2: BẬT LISTENER TRƯỚC khi vào trang search (QUAN TRỌNG!)
 print("🎯 Bắt đầu lắng nghe API 'search_items'...")
@@ -84,7 +111,7 @@ while len(all_products) < TARGET_COUNT:
     # 2. Cuộn trang giả lập hành vi người dùng
     print("-> Đang cuộn trang giả lập hành vi...")
     page.scroll.to_bottom()
-    time.sleep(random.uniform(2, 3))
+    smart_delay('quick')  # Delay ngắn sau khi cuộn
     
     # 3. Thu thập gói tin API với TIMEOUT (QUAN TRỌNG!)
     print("-> Đang bắt gói tin API...")
@@ -159,7 +186,7 @@ while len(all_products) < TARGET_COUNT:
         
         print("🔄 Đang thử tải lại trang hiện tại...")
         page.refresh()  # Tải lại trang để lấy lại dữ liệu
-        time.sleep(5)
+        smart_delay('normal')  # Delay sau refresh
         page_count -= 1  # Lùi lại biến đếm để cào lại trang này
         continue  # Quay lại đầu vòng lặp
     
@@ -178,7 +205,7 @@ while len(all_products) < TARGET_COUNT:
     
     if items_in_page == 0:
         print("⚠️ Cảnh báo: Trang này không lấy được sản phẩm nào.")
-        time.sleep(10)
+        smart_delay('wait')  # Delay dài khi không lấy được sản phẩm
     
     # 6. Chuyển sang trang tiếp theo
     try:
@@ -205,16 +232,14 @@ while len(all_products) < TARGET_COUNT:
                 btn_next.click()
                 
                 # Không cần clear listener, steps() tự đọc tiếp gói mới
-                sleep_time = random.randint(5, 10)  # Tăng delay lên 5-10s
-                print(f"-> Nghỉ {sleep_time} giây...")
-                time.sleep(sleep_time)
+                smart_delay('careful')  # Delay dài hơn sau khi chuyển trang
             else:
                 print("🛑 Nút Next bị disabled. Có thể hết trang.")
                 print("👉 Kiểm tra trình duyệt xem còn trang nào không?")
                 input("👉 Nhấn [ENTER] để thử lại hoặc Ctrl+C để thoát...")
                 if len(all_products) < TARGET_COUNT:
                     page.refresh()
-                    time.sleep(5)
+                    smart_delay('normal')  # Delay sau refresh khi next bị disabled
                     page_count -= 1
                     continue
                 else:
@@ -224,7 +249,7 @@ while len(all_products) < TARGET_COUNT:
             print("👉 Có thể có CAPTCHA hoặc lỗi tải trang.")
             input("👉 Kiểm tra trình duyệt, nhấn [ENTER] để thử lại hoặc Ctrl+C để thoát...")
             page.refresh()
-            time.sleep(5)
+            smart_delay('normal')  # Delay sau refresh khi không tìm thấy next
             page_count -= 1
             continue
             
